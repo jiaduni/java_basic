@@ -1,0 +1,8 @@
+decorator           装饰模式
+simpleFactory       简单工厂模式
+single              单例模式
+template            模版模式
+responsibility      职责链模式
+adapter             适配器模式
+bridging            桥接模式
+observer            观察者模式
