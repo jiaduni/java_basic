@@ -20,7 +20,9 @@ import org.junit.Test;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @author dujia
@@ -277,12 +279,12 @@ public class CutatorTest {
                     try {
                         CuratorFramework client = getZkInstance();
                         client.start();
-                        barrier = new DistributedBarrier(client,path);
-                        System.out.println(Thread.currentThread().getName()+" 号barrier设置");
+                        barrier = new DistributedBarrier(client, path);
+                        System.out.println(Thread.currentThread().getName() + " 号barrier设置");
                         barrier.setBarrier();
                         barrier.waitOnBarrier();
-                        System.out.println(Thread.currentThread().getName()+" 启动...");
-                    }catch (Exception e){
+                        System.out.println(Thread.currentThread().getName() + " 启动...");
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
