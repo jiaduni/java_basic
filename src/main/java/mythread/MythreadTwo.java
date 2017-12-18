@@ -5,6 +5,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
@@ -42,6 +43,8 @@ public class MythreadTwo {
                 }
             });
         }
+//        CyclicBarrier barrier = new CyclicBarrier(3);线程墙
+//        barrier.await();
         System.out.println("主线程结束");
         Thread.currentThread().sleep(1000);//主线程一结束，线程池就没有了(在main方法中无此问题)
         Collections.sort(is);
