@@ -5,21 +5,28 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.BackgroundCallback;
 import org.apache.curator.framework.api.CuratorEvent;
+import org.apache.curator.framework.recipes.atomic.AtomicValue;
+import org.apache.curator.framework.recipes.atomic.DistributedAtomicInteger;
+import org.apache.curator.framework.recipes.barriers.DistributedBarrier;
 import org.apache.curator.framework.recipes.cache.*;
+import org.apache.curator.framework.recipes.leader.LeaderSelector;
+import org.apache.curator.framework.recipes.leader.LeaderSelectorListenerAdapter;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Test;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.concurrent.*;
 
 /**
  * @author dujia
  * @version 2017年12月20日  10:32
  */
-public class cutatorTest {
+public class CutatorTest {
 
     private CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", 5000, 3000, new ExponentialBackoffRetry(1000, 3));
 
@@ -28,14 +35,14 @@ public class cutatorTest {
      *
      * @throws InterruptedException
      */
-    @Test
-    public void getZkInstance() throws InterruptedException {
+    public CuratorFramework getZkInstance() throws InterruptedException {
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);//初始sleep时间，最大重试次数
         CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", 5000, 3000, retryPolicy);
-        client.start();
-        client.usingNamespace("base");//使用默认根目录
-        System.out.println("启动成功>>>>>>>>>>>>>>>>>>>>>>");
-        Thread.sleep(Integer.MAX_VALUE);
+//        client.start();
+//        client.usingNamespace("base");//使用默认根目录
+//        System.out.println("启动成功>>>>>>>>>>>>>>>>>>>>>>");
+//        Thread.sleep(Integer.MAX_VALUE);
+        return client;
     }
 
     /**
@@ -187,5 +194,103 @@ public class cutatorTest {
         Thread.sleep(Integer.MAX_VALUE);
     }
 
+    /**
+     * master选举
+     */
+    @Test
+    public void master() throws InterruptedException {
+        client.start();
+        String path = "/master";
+        LeaderSelector selector = new LeaderSelector(client, path, new LeaderSelectorListenerAdapter() {
+            @Override
+            public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+                System.out.println("成为Master角色");
+                Thread.sleep(3000);
+                System.out.println("完成master操作，释放Master权利");
+            }
+        });
+        selector.autoRequeue();
+        selector.start();
+        Thread.sleep(Integer.MAX_VALUE);
+    }
+
+    /**
+     * 分布式锁
+     */
+    @Test
+    public void lock() throws InterruptedException {
+        client.start();
+        String path = "/lock";
+        InterProcessMutex lock = new InterProcessMutex(client, path);
+        CountDownLatch down = new CountDownLatch(1);
+        for (int i = 0; i < 30; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        down.await();
+                        lock.acquire();//获取锁
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss|SSS");
+                    String orderNo = sdf.format(new Date());
+                    System.out.println("生成的订单号是：" + orderNo);
+
+                    try {
+                        lock.release();//释放锁
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
+        down.countDown();
+        Thread.sleep(3000);
+    }
+
+    /**
+     * 分布式计数器
+     */
+    @Test
+    public void count() throws Exception {
+        client.start();
+        DistributedAtomicInteger atomicInteger = new DistributedAtomicInteger(client, "/count", new RetryNTimes(3, 1000));
+        AtomicValue<Integer> atomicValue = atomicInteger.add(1);
+        System.out.println("Result:" + atomicValue.succeeded());
+        System.out.println("data:" + atomicValue.postValue());
+    }
+
+    static DistributedBarrier barrier;
+
+    /**
+     * 分布式barrier
+     */
+    @Test
+    public void barrier() throws Exception {
+        String path = "/barrier";
+        for (int i = 0; i < 5; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        CuratorFramework client = getZkInstance();
+                        client.start();
+                        barrier = new DistributedBarrier(client,path);
+                        System.out.println(Thread.currentThread().getName()+" 号barrier设置");
+                        barrier.setBarrier();
+                        barrier.waitOnBarrier();
+                        System.out.println(Thread.currentThread().getName()+" 启动...");
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
+        Thread.sleep(2000);
+        barrier.removeBarrier();
+        Thread.sleep(2000);//不睡眠的话，主线程会结束
+    }
 
 }
