@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,8 +56,15 @@ public class CutatorTest {
     @Test
     public void create() throws Exception {
         client.start();
-        client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath("/cutatorTest", "init".getBytes());
+        client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT_SEQUENTIAL).forPath("/cutatorTest/0", "init".getBytes());
         Thread.sleep(Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void getChild() throws Exception {
+        client.start();
+        List<String> str = client.getChildren().forPath("/cutatorTest");
+        System.out.println(str);
     }
 
     /**
