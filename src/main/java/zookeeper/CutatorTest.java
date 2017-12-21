@@ -5,6 +5,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.BackgroundCallback;
 import org.apache.curator.framework.api.CuratorEvent;
+import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.curator.framework.recipes.atomic.AtomicValue;
 import org.apache.curator.framework.recipes.atomic.DistributedAtomicInteger;
 import org.apache.curator.framework.recipes.barriers.DistributedBarrier;
@@ -15,6 +16,8 @@ import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Test;
 
@@ -30,7 +33,6 @@ import java.util.concurrent.Executors;
  * @version 2017年12月20日  10:32
  */
 public class CutatorTest {
-
     private CuratorFramework client = CuratorFrameworkFactory.newClient("localhost:2181", 5000, 3000, new ExponentialBackoffRetry(1000, 3));
 
     /**
@@ -55,8 +57,37 @@ public class CutatorTest {
      */
     @Test
     public void create() throws Exception {
+        String basePath = "base-1";
         client.start();
-        client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT_SEQUENTIAL).forPath("/cutatorTest/0", "init".getBytes());
+        System.out.println(client.getNamespace());
+        Stat isExists = client.checkExists().forPath("/" + basePath);
+        if (isExists == null) {
+            client.create().withMode(CreateMode.PERSISTENT).forPath("/" + basePath);
+        }
+        String myNode = client.usingNamespace(basePath).create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL_SEQUENTIAL).forPath("/iiw-", "init".getBytes());
+        System.out.println(myNode);
+        Thread.sleep(Integer.MAX_VALUE);
+    }
+
+    //监听节点状态
+    @Test
+    public void checkExists() throws Exception {
+        client.start();
+        String base = "check";
+        client.usingNamespace(base).create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath("/test1");
+        client.usingNamespace(base).checkExists().usingWatcher(new CuratorWatcher() {
+            @Override
+            public void process(WatchedEvent event) throws Exception {
+                event.getState().getIntValue();
+//                None (-1),
+//                NodeCreated (1),
+//                NodeDeleted (2),
+//                NodeDataChanged (3),
+//                NodeChildrenChanged (4);
+                System.out.println(event.getType().getIntValue());
+            }
+        }).forPath("/test1");
+        client.usingNamespace(base).delete().forPath("/test1");
         Thread.sleep(Integer.MAX_VALUE);
     }
 
@@ -165,7 +196,7 @@ public class CutatorTest {
         });
         client.setData().forPath(path, "u".getBytes());
         Thread.sleep(1000);
-        client.delete().deletingChildrenIfNeeded().forPath(path);
+        client.delete().forPath(path);
         Thread.sleep(Integer.MAX_VALUE);
     }
 
@@ -211,12 +242,34 @@ public class CutatorTest {
     public void master() throws InterruptedException {
         client.start();
         String path = "/master";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         LeaderSelector selector = new LeaderSelector(client, path, new LeaderSelectorListenerAdapter() {
             @Override
             public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-                System.out.println("成为Master角色");
+                System.out.println("成为Master角色:" + simpleDateFormat.format(new Date()));
                 Thread.sleep(3000);
                 System.out.println("完成master操作，释放Master权利");
+            }
+        });
+        selector.autoRequeue();
+        selector.start();
+        Thread.sleep(Integer.MAX_VALUE);
+    }
+
+    /**
+     * master选举
+     */
+    @Test
+    public void master2() throws InterruptedException {
+        client.start();
+        String path = "/master";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        LeaderSelector selector = new LeaderSelector(client, path, new LeaderSelectorListenerAdapter() {
+            @Override
+            public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+                System.out.println("成为Master2角色:" + simpleDateFormat.format(new Date()));
+                Thread.sleep(3000);
+                System.out.println("完成master2操作，释放Master权利");
             }
         });
         selector.autoRequeue();
