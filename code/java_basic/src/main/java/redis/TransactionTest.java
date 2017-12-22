@@ -123,7 +123,7 @@ public class TransactionTest {
         for (int i = 0; i < 100000; i++) {
             pipeline.set("p" + i, "p" + i);
         }
-        //异步返回结果  
+        //异步返回结果
         List<Object> results = pipeline.syncAndReturnAll();
         long end = System.currentTimeMillis();
         System.out.println("Pipelined SET: " + ((end - start) / 1000.0) + " seconds"); //10000次插入仅需不到1秒
