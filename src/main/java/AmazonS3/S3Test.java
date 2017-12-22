@@ -191,12 +191,12 @@ public class S3Test {
     public void getDirectList() {
         AmazonS3 s3 = S3Test.getInstance();
         String bucket_name = "taihe-copyright-log";
-        String pathPrefix = "rollbacklog/baidumusic/";
-        Calendar c = Calendar.getInstance();
-        c.add(Calendar.DAY_OF_MONTH, -4);
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
-        String statisticsTime = simpleDateFormat.format(c.getTime());//20171225
-        pathPrefix = pathPrefix + statisticsTime + "/" + statisticsTime;
+        String pathPrefix = "pushlogs/openapi-sdkpushlogs/";
+//        Calendar c = Calendar.getInstance();
+//        c.add(Calendar.DAY_OF_MONTH, -4);
+//        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
+//        String statisticsTime = simpleDateFormat.format(c.getTime());//20171225
+//        pathPrefix = pathPrefix + statisticsTime + "/" + statisticsTime;
         ObjectListing ol = s3.listObjects(bucket_name, pathPrefix);
         String prefix = ol.getPrefix();
         int count = 0;
