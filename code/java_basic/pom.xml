@@ -68,6 +68,18 @@
             <version>1.11.125</version>
         </dependency>
 
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.beangle.serializer</groupId>
+            <artifactId>beangle-serializer-fst_2.12</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+
     </dependencies>
 
 
